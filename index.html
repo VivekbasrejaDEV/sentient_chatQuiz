@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QuizMaster — AI & Reasoning</title>
+  <style>
+    :root{
+      --bg1:#35d6e9; --bg2:#667cea; --bg3:#764ba2;
+      --card-bg: rgba(255,255,255,0.96);
+      --muted:#6b7280;
+      --accent: #667cea;
+      --success:#2ecc71;
+      --danger:#ef4444;
+      --glass-shadow: 0 20px 40px rgba(0,0,0,0.12);
+      --radius:18px;
+      --anim-duration: .45s;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg,var(--bg1),var(--bg2) 0%,var(--bg3) 100%);
+      display:flex;align-items:center;justify-content:center;padding:28px;
+      color:#111;
+    }
+
+    .container{
+      width:100%;max-width:980px;
+      background:var(--card-bg);
+      border-radius:var(--radius);
+      padding:34px;
+      box-shadow:var(--glass-shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .header{ text-align:center;margin-bottom:18px }
+    .logo{
+      font-size:2rem;font-weight:800;
+      background: linear-gradient(45deg,var(--bg2),var(--bg3));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    }
+    .subtitle{ color:var(--muted); margin-top:6px }
+
+    .layout{ display:grid; grid-template-columns: 1fr 300px; gap:18px; align-items:start }
+    @media (max-width:920px){ .layout{ grid-template-columns:1fr } }
+
+    .quiz{
+      padding:18px;border-radius:14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.94));
+      border:1px solid rgba(0,0,0,0.04);
+    }
+
+    .meta{ display:flex;justify-content:space-between;align-items:center; gap:12px; margin-bottom:12px; flex-wrap:wrap }
+    .progress{ height:10px; background:rgba(0,0,0,0.06); border-radius:999px; overflow:hidden; flex:1; margin-right:12px }
+    .progress > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--bg2),var(--bg3)); transition: width .35s ease; }
+
+    .timer{ min-width:110px; text-align:right; color:var(--muted); font-weight:700 }
+
+    .question{ font-size:1.15rem; font-weight:700; margin:8px 0 14px }
+    .choices{ display:flex; flex-direction:column; gap:10px }
+
+    .choice{
+      display:flex; gap:12px; align-items:center;
+      padding:12px 14px; border-radius:10px; cursor:pointer;
+      border:1px solid rgba(0,0,0,0.06); background:#fff; transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+      position:relative; overflow:visible;
+    }
+    .choice:hover{ transform: translateY(-3px) }
+    .choice.disabled{ opacity:.85; cursor:not-allowed }
+
+    .label{
+      min-width:36px; height:36px; border-radius:8px; background:rgba(0,0,0,0.04);
+      display:flex; align-items:center; justify-content:center; font-weight:800;
+    }
+
+    .choice.correct{
+      border-color: rgba(34,197,94,0.3);
+      box-shadow: 0 8px 20px rgba(34,197,94,0.08);
+      animation: popIn var(--anim-duration) ease both;
+    }
+    .choice.wrong{
+      border-color: rgba(239,68,68,0.35);
+      box-shadow: 0 8px 20px rgba(239,68,68,0.06);
+      animation: shake .45s;
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0) }
+      20% { transform: translateX(-6px) }
+      40% { transform: translateX(6px) }
+      60% { transform: translateX(-4px) }
+      80% { transform: translateX(4px) }
+      100% { transform: translateX(0) }
+    }
+    @keyframes popIn {
+      0% { transform: scale(.98); opacity: .85 }
+      100% { transform: scale(1); opacity: 1 }
+    }
+
+    .icon {
+      width:30px;height:30px;border-radius:8px;
+      display:flex;align-items:center;justify-content:center;font-weight:800;
+    }
+    .icon.check{ color: var(--success) }
+    .icon.cross{ color: var(--danger) }
+
+    .explanation{
+      margin-top:10px;padding:10px;border-radius:8px;background:rgba(0,0,0,0.03); color:var(--muted);
+      font-size:.95rem; display:none;
+    }
+    .explanation.visible{ display:block; animation: fadeIn .28s ease both; }
+    @keyframes fadeIn { from { opacity:0; transform: translateY(-6px) } to { opacity:1; transform:none } }
+
+    .actions{ display:flex; justify-content:space-between; gap:12px; margin-top:14px; flex-wrap:wrap }
+    button{ appearance:none;border:0;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer;background:linear-gradient(90deg,var(--bg2),var(--bg3));color:#fff }
+    button.ghost{ background:transparent;color:var(--muted);border:1px solid rgba(0,0,0,0.06) }
+    button:disabled{ opacity:.6; cursor:not-allowed }
+
+    .sidebar{ padding:18px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,255,255,0.94)); border:1px solid rgba(0,0,0,0.04); height:fit-content; display:flex;flex-direction:column;gap:12px }
+    .stat{ display:flex;justify-content:space-between; align-items:center; font-weight:700; color:#222; padding:8px 10px; border-radius:8px }
+    .stat small{ font-weight:600; color:var(--muted); font-size:.86rem }
+
+    .result{
+      text-align:center;padding:22px;
+    }
+    .result-score{ font-size:2.6rem; font-weight:800; margin:10px 0; background: linear-gradient(45deg,var(--bg2),var(--bg3)); -webkit-background-clip:text; -webkit-text-fill-color:transparent }
+    .result-msg{ color:var(--muted); margin-bottom:14px }
+
+    .footer{ margin-top:14px; text-align:center; color:var(--muted); font-size:.92rem }
+  </style>
+</head>
+<body>
+  <main class="container" role="main" aria-labelledby="title">
+    <header class="header" id="title">
+      <div class="logo">QuizMaster — AI & Reasoning</div>
+      <div class="subtitle">Test your knowledge: AI concepts, logic, and reasoning</div>
+    </header>
+
+    <section class="layout" aria-live="polite">
+      <div class="quiz" id="quiz-area" role="region" aria-label="Quiz content">
+        <div class="meta">
+          <div style="display:flex;align-items:center;gap:12px;width:100%">
+            <div style="font-weight:800">Question <span id="q-index">1</span> / <span id="q-total">1</span></div>
+            <div class="progress" aria-hidden="true" style="flex:1">
+              <i id="progress-bar"></i>
+            </div>
+          </div>
+          <div class="timer" id="timer">--:--</div>
+        </div>
+
+        <div>
+          <div class="question" id="question-text">Loading…</div>
+          <div class="choices" id="choices" role="list"></div>
+          <div class="explanation" id="explanation" aria-live="polite"></div>
+        </div>
+
+        <div class="actions">
+          <div style="display:flex;gap:8px">
+            <button id="prev-btn" class="ghost">Prev</button>
+            <button id="next-btn" class="ghost">Next</button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button id="submit-btn" class="ghost">Submit</button>
+            <button id="restart-btn" class="ghost">Restart</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="sidebar" aria-label="Quiz summary">
+        <div class="stat"><small>Time / Q</small><div id="time-per-q">20s</div></div>
+        <div class="stat"><small>Score</small><div id="score">0</div></div>
+        <div class="stat"><small>Correct</small><div id="correct-count">0</div></div>
+        <div class="stat"><small>Incorrect</small><div id="incorrect-count">0</div></div>
+        <div style="margin-top:6px">
+          <button id="share-btn" class="ghost">Share Result</button>
+        </div>
+      </aside>
+    </section>
+
+    <div class="footer">Built with ❤️ — deploy to Vercel or any static host</div>
+  </main>
+
+  <template id="result-template">
+    <div class="result">
+      <h2>Quiz Finished</h2>
+      <div class="result-score" id="final-score"></div>
+      <div class="result-msg" id="final-msg"></div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+        <button id="retry-btn">Try Again</button>
+        <button id="view-answers-btn" class="ghost">View Answers</button>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    const QUESTIONS = [
+      {
+        q: "Which of the following best describes 'transformer' architectures in modern AI?",
+        options: [
+          "A type of recurrent neural network optimized for time-series",
+          "A deep learning model that uses self-attention mechanisms",
+          "A rule-based system for symbolic reasoning",
+          "A hardware device for accelerating matrix multiplies"
+        ],
+        answer: 1,
+        explanation: "Transformers use self-attention to model relationships between tokens — they replaced RNNs for many language tasks (e.g., BERT, GPT)."
+      },
+      {
+        q: "In ML, what is 'overfitting'?",
+        options: [
+          "When a model is too slow to train",
+          "When a model performs well on training data but poorly on unseen data",
+          "When a model uses too much memory",
+          "When a model has insufficient parameters to learn patterns"
+        ],
+        answer: 1,
+        explanation: "Overfitting occurs when a model learns noise or specifics of the training set rather than generalizable patterns."
+      },
+      {
+        q: "Which metric is most appropriate for evaluating a binary classifier on imbalanced classes?",
+        options: [
+          "Accuracy",
+          "ROC AUC or Precision-Recall AUC",
+          "Mean Squared Error",
+          "Top-5 accuracy"
+        ],
+        answer: 1,
+        explanation: "Accuracy can be misleading for imbalanced classes; ROC AUC and Precision-Recall AUC are better."
+      },
+      {
+        q: "In logic, what does 'soundness' of a deductive system mean?",
+        options: [
+          "Every syntactically derivable statement is semantically valid (true in all models)",
+          "Every valid statement is derivable",
+          "The system is complete and consistent",
+          "The system has no contradictions"
+        ],
+        answer: 0,
+        explanation: "Soundness means the proof rules only derive statements that are actually true in the semantics."
+      },
+      {
+        q: "What is the main idea of 'few-shot learning' in large language models?",
+        options: [
+          "Training models from scratch with few data points",
+          "Providing a few examples in the prompt so the model generalizes",
+          "Compressing the model to few parameters",
+          "Using few GPUs to fine-tune a model"
+        ],
+        answer: 1,
+        explanation: "Few-shot learning shows examples in the prompt so LLMs can adapt to a task without fine-tuning."
+      }
+    ];
+
+    const TIME_PER_QUESTION = 20;
+    const AUTO_ADVANCE_MS = 900;
+
+    let state = {
+      questions: QUESTIONS,
+      index: 0,
+      selected: Array(QUESTIONS.length).fill(null),
+      score: 0,
+      correct: 0,
+      incorrect: 0,
+      timer: null,
+      timeLeft: TIME_PER_QUESTION
+    };
+
+    const refs = {
+      qIndex: document.getElementById('q-index'),
+      qTotal: document.getElementById('q-total'),
+      questionText: document.getElementById('question-text'),
+      choices: document.getElementById('choices'),
+      prevBtn: document.getElementById('prev-btn'),
+      nextBtn: document.getElementById('next-btn'),
+      submitBtn: document.getElementById('submit-btn'),
+      restartBtn: document.getElementById('restart-btn'),
+      progressBar: document.getElementById('progress-bar'),
+      timerLabel: document.getElementById('timer'),
+      scoreLabel: document.getElementById('score'),
+      correctLabel: document.getElementById('correct-count'),
+      incorrectLabel: document.getElementById('incorrect-count'),
+      timePerQLabel: document.getElementById('time-per-q'),
+      shareBtn: document.getElementById('share-btn'),
+      quizArea: document.getElementById('quiz-area'),
+      explanation: document.getElementById('explanation'),
+      resultTemplate: document.getElementById('result-template')
+    };
+
+    function renderQuestion(){
+      const q = state.questions[state.index];
+      refs.qIndex.textContent = state.index + 1;
+      refs.qTotal.textContent = state.questions.length;
+      refs.questionText.textContent = q.q;
+      refs.choices.innerHTML = '';
+      refs.explanation.classList.remove('visible');
+      refs.explanation.textContent = '';
+
+      q.options.forEach((opt, idx) => {
+        const el = document.createElement('button');
+        el.className = 'choice';
+        el.type = 'button';
+        el.setAttribute('role', 'listitem');
+        el.setAttribute('data-idx', idx);
+
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.textContent = String.fromCharCode(65 + idx);
+
+        const text = document.createElement('div');
+        text.style.flex = '1';
+        text.style.textAlign = 'left';
+        text.textContent = opt;
+
+        const icon = document.createElement('div');
+        icon.className = 'icon';
+        icon.setAttribute('aria-hidden', 'true');
+
+        el.appendChild(label);
+        el.appendChild(text);
+        el.appendChild(icon);
+
+        if (state.selected[state.index] !== null) el.classList.add('disabled');
+        el.addEventListener('click', () => handleChoice(idx, el));
+
+        refs.choices.appendChild(el);
+      });
+
+      refs.prevBtn.disabled = state.index === 0;
+      refs.nextBtn.disabled = state.index === state.questions.length - 1;
+      refs.submitBtn.disabled = state.selected.includes(null);
+
+      const pct = Math.round(((state.index + 1) / state.questions.length) * 100);
+      refs.progressBar.style.width = pct + '%';
+
+      refs.scoreLabel.textContent = state.score;
+      refs.correctLabel.textContent = state.correct;
+      refs.incorrectLabel.textContent = state.incorrect;
+      refs.timePerQLabel.textContent = TIME_PER_QUESTION + 's';
+    }
+
+    function startTimer(){
+      clearInterval(state.timer);
+      state.timeLeft = TIME_PER_QUESTION;
+      refs.timerLabel.textContent = formatTime(state.timeLeft);
+      state.timer = setInterval(() => {
+        state.timeLeft--;
+        refs.timerLabel.textContent = formatTime(state.timeLeft);
+        if (state.timeLeft <= 0){ handleTimeout(); }
+      }, 1000);
+    }
+    function stopTimer(){ clearInterval(state.timer); }
+    function formatTime(s){ return `00:${String(s).padStart(2,'0')}`; }
+    function handleTimeout(){
+      stopTimer();
+      if (state.selected[state.index] === null){
+        state.selected[state.index] = -1;
+        state.incorrect++;
+        showFeedback(null,true);
+      }
+    }
+
+    function handleChoice(choiceIdx, el){
+      if (state.selected[state.index] !== null) return;
+      stopTimer();
+      const q = state.questions[state.index];
+      state.selected[state.index] = choiceIdx;
+      const correctIdx = q.answer;
+      if (choiceIdx === correctIdx){ state.score+=10; state.correct++; }
+      else { state.incorrect++; }
+      showFeedback(choiceIdx,false,el);
+    }
+
+    function showFeedback(choiceIdx, timedOut=false, buttonEl=null){
+      const q = state.questions[state.index];
+      const correctIdx = q.answer;
+      const allChoices = Array.from(refs.choices.querySelectorAll('.choice'));
+      allChoices.forEach((cEl) => {
+        const idx = Number(cEl.getAttribute('data-idx'));
+        cEl.classList.add('disabled');
+        const icon = cEl.querySelector('.icon
